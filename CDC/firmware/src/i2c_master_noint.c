@@ -104,5 +104,14 @@ short combine(unsigned char l, unsigned char h){ //combines IMU 16bits ints whic
     return c;
 }
 
+void IMU_multiRead(unsigned char address, unsigned char reg, short * compData, int length){
+    int d;
+    char datap[length*2];
+    I2C_read_multiple(address, reg , datap, length);
+    for(d=0;d<length;d++){
+        compData[d]=combine(datap[2*d],datap[2*d+1]);
+    }
+}
+
 
   

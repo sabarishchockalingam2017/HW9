@@ -51,6 +51,7 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include "app.h"
 #include <stdio.h>
 #include <xc.h>
+#include "i2c_master_noint.h"
 
 // *****************************************************************************
 // *****************************************************************************
@@ -62,6 +63,7 @@ uint8_t APP_MAKE_BUFFER_DMA_READY dataOut[APP_READ_BUFFER_SIZE];
 uint8_t APP_MAKE_BUFFER_DMA_READY readBuffer[APP_READ_BUFFER_SIZE];
 int len, i = 0;
 int startTime = 0;
+short imuData[7];
 
 // *****************************************************************************
 /* Application Data
@@ -426,8 +428,8 @@ void APP_Tasks(void) {
             appData.writeTransferHandle = USB_DEVICE_CDC_TRANSFER_HANDLE_INVALID;
             appData.isWriteComplete = false;
             appData.state = APP_STATE_WAIT_FOR_WRITE_COMPLETE;
-
-            len = sprintf(dataOut, "%d\r\n", i);
+            IMU_multiRead(IMU_ADDR,0x20,imuData,7);
+            len = sprintf(dataOut, "ax: %d\r\n", imuData[1]);
             i++;
             if (appData.isReadComplete) {
                 USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,

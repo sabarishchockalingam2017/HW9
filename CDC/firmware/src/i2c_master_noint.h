@@ -20,4 +20,5 @@ void I2C_write(char addr, char data);
 char I2C_read(char);
 void I2C_read_multiple(unsigned char, unsigned char, unsigned char *, int);
 short combine(unsigned char, unsigned char);
+void IMU_multiRead(unsigned char address, unsigned char reg, short * compData, int length);
 #endif
