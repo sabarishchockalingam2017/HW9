@@ -52,7 +52,6 @@ SUBSTITUTE GOODS, TECHNOLOGY, SERVICES, OR ANY CLAIMS BY THIRD PARTIES
 #include <stdio.h>
 #include <xc.h>
 #include "i2c_master_noint.h"
-
 // *****************************************************************************
 // *****************************************************************************
 // Section: Global Data Definitions
@@ -64,6 +63,8 @@ uint8_t APP_MAKE_BUFFER_DMA_READY readBuffer[APP_READ_BUFFER_SIZE];
 int len, i = 0;
 int startTime = 0;
 short imuData[7];
+char rRcvd=0;
+int imuTimer;
 
 // *****************************************************************************
 /* Application Data
@@ -332,6 +333,8 @@ void APP_Initialize(void) {
 
     /* Set up the read buffer */
     appData.readBuffer = &readBuffer[0];
+    
+    i2c_master_setup();
 
     startTime = _CP0_GET_COUNT();
 }
@@ -391,7 +394,9 @@ void APP_Tasks(void) {
                 USB_DEVICE_CDC_Read(USB_DEVICE_CDC_INDEX_0,
                         &appData.readTransferHandle, appData.readBuffer,
                         APP_READ_BUFFER_SIZE);
-
+                if(readBuffer[0]=='r'){
+                    rRcvd=1;
+                }
                 if (appData.readTransferHandle == USB_DEVICE_CDC_TRANSFER_HANDLE_INVALID) {
                     appData.state = APP_STATE_ERROR;
                     break;
@@ -410,7 +415,7 @@ void APP_Tasks(void) {
             /* Check if a character was received or a switch was pressed.
              * The isReadComplete flag gets updated in the CDC event handler. */
 
-            if (appData.isReadComplete || _CP0_GET_COUNT() - startTime > (48000000 / 2 / 5)) {
+            if (appData.isReadComplete || _CP0_GET_COUNT() - startTime > (48000000 / 2 / 100)) {
                 appData.state = APP_STATE_SCHEDULE_WRITE;
             }
 
@@ -428,15 +433,41 @@ void APP_Tasks(void) {
             appData.writeTransferHandle = USB_DEVICE_CDC_TRANSFER_HANDLE_INVALID;
             appData.isWriteComplete = false;
             appData.state = APP_STATE_WAIT_FOR_WRITE_COMPLETE;
-            IMU_multiRead(IMU_ADDR,0x20,imuData,7);
-            len = sprintf(dataOut, "ax: %d\r\n", imuData[1]);
-            i++;
+            
+            IMU_multiRead(IMU_ADDR, 0x20, imuData, 7);
+            len = sprintf(dataOut, "%d ax:%d ay:%d az:%d gx:%d gy:%d gz:%d\r\n", i,imuData[4],imuData[5],imuData[6],imuData[1],imuData[2],imuData[3]);
+            
+
             if (appData.isReadComplete) {
                 USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
                         &appData.writeTransferHandle,
                         appData.readBuffer, 1,
                         USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+
             } else {
+                
+                if(rRcvd){
+                    len=sprintf(dataOut,"/r/n r recieved /r/n");
+                    
+                    for(i=0;i<100;i++){
+                        imuTimer=_CP0_GET_COUNT();
+                        while(_CP0_GET_COUNT() - imuTimer > (48000000 / 2 / 100)){;}
+                        IMU_multiRead(IMU_ADDR, 0x20, imuData, 7);
+                        
+                        len = sprintf(dataOut, "%d ax:%d ay:%d az:%d gx:%d gy:%d gz:%d\r\n", 
+                                i+1,imuData[4],imuData[5],imuData[6],imuData[1],
+                                imuData[2],imuData[3]);
+                        
+                        USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
+                        &appData.writeTransferHandle, dataOut, len,
+                        USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
+
+                    }
+                    rRcvd=0;
+                }else{
+                    len=1; dataOut[0]=0;
+                }
+                
                 USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
                         &appData.writeTransferHandle, dataOut, len,
                         USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
