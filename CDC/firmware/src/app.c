@@ -452,6 +452,7 @@ void APP_Tasks(void) {
                     for(i=0;i<100;i++){
                         imuTimer=_CP0_GET_COUNT();
                         while(_CP0_GET_COUNT() - imuTimer > (48000000 / 2 / 100)){;}
+                        
                         IMU_multiRead(IMU_ADDR, 0x20, imuData, 7);
                         
                         len = sprintf(dataOut, "%d ax:%d ay:%d az:%d gx:%d gy:%d gz:%d\r\n", 
@@ -461,7 +462,6 @@ void APP_Tasks(void) {
                         USB_DEVICE_CDC_Write(USB_DEVICE_CDC_INDEX_0,
                         &appData.writeTransferHandle, dataOut, len,
                         USB_DEVICE_CDC_TRANSFER_FLAGS_DATA_COMPLETE);
-
                     }
                     rRcvd=0;
                 }else{
